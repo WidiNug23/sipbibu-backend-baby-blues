@@ -2,12 +2,20 @@
 
 namespace App\Controllers;
 
-use CodeIgniter\Controller;
+use App\Models\HasilMoodModel;
 
-class GrafikControl extends Controller
+class GrafikControl extends BaseController
 {
     public function index()
-    {
-        return view('grafik_mood');
-    }
+{
+    $hasilMoodModel = new HasilMoodModel();
+    $data['hasilMood'] = $hasilMoodModel->findAll();
+
+    // Ambil data emosi yang dipilih dari sesi
+    $session = session();
+    $data['emosiDipilih'] = $session->get('emosi_dipilih');
+
+    return view('grafik_mood', $data);
+}
+
 }
