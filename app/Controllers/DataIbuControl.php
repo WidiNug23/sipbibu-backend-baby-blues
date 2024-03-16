@@ -8,75 +8,73 @@ class DataIbuControl extends BaseController
 {
     public function signup()
     {
-        // Validasi data yang dikirimkan dari form
-        $rules = [
-            'nama' => 'required',
-            'no_telp' => 'required',
-            'alamat' => 'required',
-            'usia' => 'required|numeric',
-            'email' => 'required|valid_email|is_unique[data_ibu.email]',
-            'password' => 'required|min_length[6]'
-        ];
+        $data = [];
 
-        if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        if ($this->request->getMethod() === 'post') {
+            // Validasi data yang dimasukkan oleh pengguna
+            $rules = [
+                'nama' => 'required',
+                'no_telp' => 'required',
+                'alamat' => 'required',
+                'usia' => 'required|numeric',
+                'email' => 'required|valid_email|is_unique[data_ibu.email]',
+                'password' => 'required'
+            ];
+
+            if (!$this->validate($rules)) {
+                // Jika validasi gagal, kembalikan dengan pesan error
+                return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+            }
+
+            try {
+                // Proses pendaftaran
+                $model = new DataIbuModel();
+                $data = [
+                    'nama' => $this->request->getPost('nama'),
+                    'no_telp' => $this->request->getPost('no_telp'),
+                    'alamat' => $this->request->getPost('alamat'),
+                    'usia' => $this->request->getPost('usia'),
+                    'email' => $this->request->getPost('email'),
+                    'password' => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT)
+                ];
+
+                $model->insert($data);
+
+                // Redirect ke halaman login setelah signup
+                return redirect()->to('/login');
+            } catch (\Exception $e) {
+                // Tangani kesalahan dan tampilkan pesan error
+                return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
+            }
         }
 
-        // Ambil data dari form
-        $nama = $this->request->getPost('nama');
-        $no_telp = $this->request->getPost('no_telp');
-        $alamat = $this->request->getPost('alamat');
-        $usia = $this->request->getPost('usia');
-        $email = $this->request->getPost('email');
-        $password = password_hash($this->request->getPost('password'), PASSWORD_DEFAULT);
-
-        // Simpan data ke database
-        $model = new DataIbuModel();
-        $model->save([
-            'nama' => $nama,
-            'no_telp' => $no_telp,
-            'alamat' => $alamat,
-            'usia' => $usia,
-            'email' => $email,
-            'password' => $password
-        ]);
-
-        // Redirect ke halaman login setelah signup berhasil
-        return redirect()->to('/login')->with('success', 'Akun berhasil dibuat. Silakan login.');
+        return view('signup_ibu', $data);
     }
 
     public function login()
     {
-        // Validasi data yang dikirimkan dari form
-        $rules = [
-            'email' => 'required|valid_email',
-            'password' => 'required|min_length[6]'
-        ];
+        if ($this->request->getMethod() === 'post') {
+            // Proses login
+            $email = $this->request->getPost('email');
+            $password = $this->request->getPost('password');
 
-        if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+            $model = new DataIbuModel();
+            $user = $model->where('email', $email)->first();
+
+            if ($user && password_verify($password, $user['password'])) {
+                // Login berhasil, simpan data user di session
+                session()->set('user', $user);
+                // Redirect ke halaman dashboard
+                return redirect()->to('/dashboard');
+            } else {
+                // Login gagal, kembali ke halaman login dengan pesan error
+                return redirect()->to('/login')->with('error', 'Email atau password salah');
+            }
         }
 
-        // Ambil data dari form
-        $email = $this->request->getPost('email');
-        $password = $this->request->getPost('password');
-
-        // Cari pengguna berdasarkan alamat email
-        $model = new DataIbuModel();
-        $user = $model->where('email', $email)->first();
-
-        // Periksa apakah pengguna ada dan passwordnya benar
-        if ($user && password_verify($password, $user['password'])) {
-            // Simpan data pengguna ke sesi
-            session()->set('user', $user);
-
-            // Redirect ke halaman dashboard setelah login berhasil
-            return redirect()->to('/dashboard');
-        } else {
-            // Tampilkan pesan kesalahan jika login gagal
-            return redirect()->back()->withInput()->with('error', 'Email atau password salah.');
-        }
+        return view('login_ibu');
     }
+
 
     public function dashboard()
     {
